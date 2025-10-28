@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot - Multilingual Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1>🤖 AI Chatbot</h1>
+                <p class="subtitle">Your Intelligent Multilingual Assistant �</p>
+                <button id="clearBtn" class="clear-btn" title="Clear conversation">🗑️ Clear Chat</button>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        <p id="welcomeMessage">👋 Hello! I can help with fashion, lifestyle, medical advice, math problems, and more! Select your language above.</p>
+                    </div>
+                </div>
+            </div>
+            
+                        <div class="chat-input-container">
+                <!-- Input Form -->
+                <form id="chatForm">
+                    <input 
+                        type="text" 
+                        id="userInput" 
+                        placeholder="Enter a prompt here" 
+                        autocomplete="off"
+                    >
+                    <button type="submit" id="sendBtn">
+                        Send
+                    </button>
+                </form>
+                
+                <!-- Bottom Controls -->
+                <div class="bottom-controls">
+                    <select id="languageSelect" class="language-selector-inline">
+                        <option value="auto">🌍 Auto Detect</option>
+                        <option value="english">English</option>
+                        <option value="hindi">हिंदी</option>
+                        <option value="hinglish">Hinglish</option>
+                        <option value="spanish">Español</option>
+                        <option value="french">Français</option>
+                        <option value="german">Deutsch</option>
+                        <option value="arabic">العربية</option>
+                        <option value="chinese">中文</option>
+                    </select>
+                    <button type="button" id="voiceBtn" class="voice-btn" title="Voice input">
+                        <span id="micIcon">🎤</span>
+                        <span id="listeningIcon" class="hidden">🔴</span>
+                    </button>
+                    <button type="button" id="fileBtn" class="file-btn" title="Upload file">
+                        📎
+                    </button>
+                    <input 
+                        type="file" 
+                        id="fileInput" 
+                        accept="image/*,.pdf,.txt,.doc,.docx" 
+                        style="display: none;"
+                    >
+                </div>
+                
+                <!-- File Preview -->
+                <div id="filePreview" class="file-preview hidden"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

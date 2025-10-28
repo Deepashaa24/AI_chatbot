@@ -1,0 +1,488 @@
+const chatMessages = document.getElementById('chatMessages');
+const chatForm = document.getElementById('chatForm');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const sendIcon = document.getElementById('send// Add bot message to chat
+function addBotMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot-message';
+    
+    const messageId = 'msg-' + Date.now();
+    
+    messageDiv.innerHTML = `
+        <div class="avatar bot-avatar">🤖</div>
+        <div class="message-content">
+            <p>${escapeHtml(message)}</p>
+            <button class="copy-btn" onclick="copyMessage('${escapeHtml(message).replace(/'/g, "\\'")}', this)">📋 Copy</button>
+        </div>
+    `;
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+    
+    // Add to history
+    chatHistory.push({
+        role: 'bot',
+        message: message,
+        timestamp: new Date().toLocaleTimeString()
+    });
+}t loadingIcon = document.getElementById('loadingIcon');
+const clearBtn = document.getElementById('clearBtn');
+const voiceBtn = document.getElementById('voiceBtn');
+const micIcon = document.getElementById('micIcon');
+const listeningIcon = document.getElementById('listeningIcon');
+const fileBtn = document.getElementById('fileBtn');
+const fileInput = document.getElementById('fileInput');
+const filePreview = document.getElementById('filePreview');
+const themeBtn = document.getElementById('themeBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const suggestedPrompts = document.getElementById('suggestedPrompts');
+
+// File handling
+let selectedFile = null;
+
+// Chat history for download
+let chatHistory = [];
+
+// Theme handling
+let isDarkTheme = localStorage.getItem('theme') === 'dark';
+if (isDarkTheme) {
+    document.body.classList.add('dark-theme');
+    themeBtn.textContent = '☀️';
+}
+
+// Initialize Speech Recognition
+let recognition = null;
+let isListening = false;
+
+// Check if browser supports speech recognition
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    // Configure recognition
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    
+    // Support multiple languages
+    recognition.lang = 'en-US'; // Default, will be updated based on detection
+    
+    // Handle recognition results
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        userInput.focus();
+    };
+    
+    // Handle recognition end
+    recognition.onend = () => {
+        stopListening();
+    };
+    
+    // Handle recognition errors
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        stopListening();
+        
+        if (event.error === 'no-speech') {
+            addBotMessage('No speech detected. Please try again. 🎤');
+        } else if (event.error === 'not-allowed') {
+            addBotMessage('Microphone access denied. Please allow microphone permissions. 🎤');
+        } else {
+            addBotMessage('Voice input error. Please try again or type your message. 😔');
+        }
+    };
+} else {
+    // Hide voice button if not supported
+    if (voiceBtn) {
+        voiceBtn.style.display = 'none';
+    }
+}
+
+// Start listening
+function startListening() {
+    if (!recognition) {
+        addBotMessage('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari. 😔');
+        return;
+    }
+    
+    try {
+        isListening = true;
+        voiceBtn.classList.add('listening');
+        micIcon.classList.add('hidden');
+        listeningIcon.classList.remove('hidden');
+        
+        recognition.start();
+    } catch (error) {
+        console.error('Error starting recognition:', error);
+        stopListening();
+    }
+}
+
+// Stop listening
+function stopListening() {
+    isListening = false;
+    voiceBtn.classList.remove('listening');
+    micIcon.classList.remove('hidden');
+    listeningIcon.classList.add('hidden');
+}
+
+// File handling functions
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        addBotMessage('File is too large! Please select a file under 5MB. 📁');
+        return;
+    }
+    
+    selectedFile = file;
+    showFilePreview(file);
+}
+
+function showFilePreview(file) {
+    filePreview.classList.remove('hidden');
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const isImage = file.type.startsWith('image/');
+        const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+        
+        filePreview.innerHTML = `
+            <div class="file-preview-item">
+                ${isImage ? `<img src="${e.target.result}" alt="Preview">` : '<span style="font-size: 30px;">📄</span>'}
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+                <button class="remove-file" onclick="removeFile()">✕</button>
+            </div>
+        `;
+    };
+    
+    if (file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
+    } else {
+        // For non-image files, just show the icon
+        const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+        filePreview.innerHTML = `
+            <div class="file-preview-item">
+                <span style="font-size: 30px;">📄</span>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+                <button class="remove-file" onclick="removeFile()">✕</button>
+            </div>
+        `;
+    }
+}
+
+function removeFile() {
+    selectedFile = null;
+    filePreview.classList.add('hidden');
+    filePreview.innerHTML = '';
+    fileInput.value = '';
+}
+
+// Convert file to base64
+async function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// Theme toggle
+function toggleTheme() {
+    isDarkTheme = !isDarkTheme;
+    document.body.classList.toggle('dark-theme');
+    themeBtn.textContent = isDarkTheme ? '☀️' : '🌙';
+    localStorage.setItem('theme', isDarkTheme ? 'dark' : 'light');
+}
+
+// Download chat history
+function downloadChat() {
+    if (chatHistory.length === 0) {
+        addBotMessage('No chat history to download! 📭');
+        return;
+    }
+    
+    const chatText = chatHistory.map(msg => 
+        `[${msg.timestamp}] ${msg.role.toUpperCase()}: ${msg.message}`
+    ).join('\n\n');
+    
+    const blob = new Blob([chatText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-history-${new Date().toISOString().slice(0,10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Copy message to clipboard
+function copyMessage(text, button) {
+    navigator.clipboard.writeText(text).then(() => {
+        button.textContent = '✓ Copied!';
+        button.classList.add('copied');
+        setTimeout(() => {
+            button.textContent = '📋 Copy';
+            button.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+// Add user message to chat
+function addUserMessage(message, hasFile = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message user-message';
+    
+    let fileIndicator = '';
+    if (hasFile) {
+        fileIndicator = '<span style="font-size: 12px; opacity: 0.8;">📎 File attached</span><br>';
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            ${fileIndicator}
+            <p>${escapeHtml(message)}</p>
+        </div>
+        <div class="avatar user-avatar">👤</div>
+    `;
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+    
+    // Add to history
+    chatHistory.push({
+        role: 'user',
+        message: message,
+        timestamp: new Date().toLocaleTimeString()
+    });
+    
+    // Hide suggested prompts after first message
+    if (suggestedPrompts) {
+        suggestedPrompts.classList.add('hidden');
+    }
+}
+
+// Add bot message to chat
+    messageDiv.className = 'message user-message';
+    
+    let fileIndicator = '';
+    if (hasFile) {
+        fileIndicator = '<span style="font-size: 12px; opacity: 0.8;">📎 File attached</span><br>';
+    }
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            ${fileIndicator}
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+}
+
+// Add bot message to chat
+function addBotMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot-message';
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            <p>${escapeHtml(message)}</p>
+        </div>
+    `;
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot-message';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="message-content">
+            <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
+    chatMessages.appendChild(typingDiv);
+    scrollToBottom();
+}
+
+// Remove typing indicator
+function removeTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
+// Scroll to bottom of chat
+function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Send message to backend
+async function sendMessage(message, file = null) {
+    try {
+        let requestBody = { message };
+        
+        // If there's a file, add it to the request
+        if (file) {
+            const base64Data = await fileToBase64(file);
+            requestBody.file = {
+                data: base64Data,
+                mimeType: file.type,
+                name: file.name
+            };
+        }
+        
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            return data.data.response;
+        } else {
+            throw new Error(data.error || 'Failed to get response');
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        throw error;
+    }
+}
+
+// Clear chat history
+async function clearChatHistory() {
+    try {
+        const response = await fetch('/api/chat/history', {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Clear chat messages (keep welcome message)
+            chatMessages.innerHTML = `
+                <div class="message bot-message">
+                    <div class="message-content">
+                        <p>👋 Hello! I can help with fashion, lifestyle, medical advice, math problems, and more!</p>
+                        <p>नमस्ते! मैं फैशन, लाइफस्टाइल, चिकित्सा सलाह, गणित की समस्याएं और अधिक में मदद कर सकता हूँ!</p>
+                        <p>Namaste! Fashion, lifestyle, medical advice, math problems aur zyada mein madad kar sakta hoon!</p>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error clearing history:', error);
+        addBotMessage('Failed to clear chat history. Please try again.');
+    }
+}
+
+// Handle form submission
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const message = userInput.value.trim();
+    const hasFile = selectedFile !== null;
+    
+    if (!message && !hasFile) return;
+
+    // Add user message
+    addUserMessage(message || '(Analyzing file...)', hasFile);
+    userInput.value = '';
+
+    // Disable input while processing
+    userInput.disabled = true;
+    sendBtn.disabled = true;
+    sendIcon.classList.add('hidden');
+    loadingIcon.classList.remove('hidden');
+
+    // Show typing indicator
+    showTypingIndicator();
+
+    try {
+        // Send message and get response (with file if attached)
+        const botResponse = await sendMessage(message || 'Analyze this file', selectedFile);
+        
+        // Clear file after sending
+        if (hasFile) {
+            removeFile();
+        }
+        
+        // Remove typing indicator
+        removeTypingIndicator();
+        
+        // Add bot response
+        addBotMessage(botResponse);
+    } catch (error) {
+        removeTypingIndicator();
+        addBotMessage('Sorry, I encountered an error. Please try again. 😔');
+    } finally {
+        // Re-enable input
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        sendIcon.classList.remove('hidden');
+        loadingIcon.classList.add('hidden');
+        userInput.focus();
+    }
+});
+
+// Handle clear button click
+clearBtn.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+        clearChatHistory();
+    }
+});
+
+// Handle voice button click
+if (voiceBtn) {
+    voiceBtn.addEventListener('click', () => {
+        if (isListening) {
+            recognition.stop();
+            stopListening();
+        } else {
+            startListening();
+        }
+    });
+}
+
+// Handle file button click
+if (fileBtn) {
+    fileBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+}
+
+// Handle file selection
+if (fileInput) {
+    fileInput.addEventListener('change', handleFileSelect);
+}
+
+// Focus input on load
+userInput.focus();
